@@ -27,6 +27,20 @@ async def mark_all_read(user: dict = Depends(get_current_user)):
     return {"ok": True}
 
 
+@router.delete("/notifications/{nid}")
+async def delete_notification(nid: str, user: dict = Depends(get_current_user)):
+    from server import db
+    await db.notifications.delete_one({"_id": nid, "user_id": user["_id"]})
+    return {"ok": True}
+
+
+@router.get("/notifications/unread-count")
+async def unread_count(user: dict = Depends(get_current_user)):
+    from server import db
+    count = await db.notifications.count_documents({"user_id": user["_id"], "read": {"$ne": True}})
+    return {"count": count}
+
+
 @router.get("/search")
 async def global_search(q: str = "", user: dict = Depends(get_current_user)):
     from server import db

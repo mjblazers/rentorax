@@ -22,9 +22,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Trash2, Users, Eye } from "lucide-react";
+import { Plus, Search, Trash2, Users, Eye, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import MoveOutDialog from "@/components/MoveOutDialog";
 
 const FREQUENCIES = ["yearly", "quarterly", "monthly"];
 
@@ -35,6 +36,7 @@ export default function Tenants() {
   const [unitsByProp, setUnitsByProp] = useState({});
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [moveOut, setMoveOut] = useState(null);
   const empty = {
     property_id: "", unit_id: "", full_name: "", phone: "", email: "",
     gender: "", date_of_birth: "", nin: "", home_address: "", occupation: "",
@@ -236,18 +238,21 @@ export default function Tenants() {
                 </TableCell>
                 <TableCell className="text-right">
                   <Button size="icon" variant="ghost" onClick={() => nav(`/landlord/tenants/${t.id}`)} data-testid={`tenant-view-${t.id}`}><Eye className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => setMoveOut(t)} data-testid={`tenant-moveout-${t.id}`} title="Move out">
+                    <LogOut className="h-4 w-4" />
+                  </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button size="icon" variant="ghost" className="text-destructive" data-testid={`tenant-delete-${t.id}`}><Trash2 className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" className="text-destructive" data-testid={`tenant-delete-${t.id}`} title="Archive"><Trash2 className="h-4 w-4" /></Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete tenant?</AlertDialogTitle>
-                        <AlertDialogDescription>This removes the tenant record and frees their unit. Payment history will also be lost.</AlertDialogDescription>
+                        <AlertDialogTitle>Archive this tenant?</AlertDialogTitle>
+                        <AlertDialogDescription>The tenant record and all history (payments, maintenance, receipts) are preserved. The unit becomes vacant.</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => del(t.id)}>Delete</AlertDialogAction>
+                        <AlertDialogAction onClick={() => del(t.id)}>Archive</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -257,6 +262,8 @@ export default function Tenants() {
           </TableBody>
         </Table>
       </Card>
+
+      <MoveOutDialog tenant={moveOut} open={!!moveOut} onClose={() => setMoveOut(null)} onComplete={() => load(q)} />
     </div>
   );
 }

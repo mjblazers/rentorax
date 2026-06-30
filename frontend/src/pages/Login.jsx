@@ -113,6 +113,9 @@ export default function Login() {
                   {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Sign in
                 </Button>
+                <div className="text-center">
+                  <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground" data-testid="forgot-link">Forgot password?</Link>
+                </div>
               </form>
 
               <div className="mt-8 text-xs text-muted-foreground border-t border-border pt-5 space-y-1">

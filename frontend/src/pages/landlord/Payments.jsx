@@ -13,7 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Printer, CreditCard } from "lucide-react";
+import { Plus, Printer, CreditCard, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 const METHODS = ["Bank Transfer", "Cash", "POS", "Cheque", "Online", "Initial"];
@@ -121,7 +121,11 @@ export default function Payments() {
                   <TableCell className="text-sm">{formatDate(p.payment_date)}</TableCell>
                   <TableCell className="text-sm">{p.payment_method}</TableCell>
                   <TableCell className="text-xs font-mono">{p.receipt_number}</TableCell>
-                  <TableCell><Button size="sm" variant="ghost" onClick={() => setReceiptOpen(p)} data-testid={`view-receipt-${p.id}`}><Printer className="h-4 w-4" /></Button></TableCell>
+                  <TableCell><Button size="sm" variant="ghost" onClick={() => setReceiptOpen(p)} data-testid={`view-receipt-${p.id}`}><Printer className="h-4 w-4" /></Button>
+                    <a href={`${process.env.REACT_APP_BACKEND_URL}/api/pdf/receipt/${p.id}`} target="_blank" rel="noreferrer" data-testid={`pdf-receipt-${p.id}`}>
+                      <Button size="sm" variant="ghost"><FileText className="h-4 w-4" /></Button>
+                    </a>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

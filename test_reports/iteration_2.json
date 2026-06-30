@@ -1,0 +1,53 @@
+{
+  "summary": "Phase-2 backend + frontend testing of RentoraX. Wrote /app/backend/tests/test_phase2.py with 18 tests covering account lockout (6 fails -> 423/429), forgot/reset-password flow (with original password restored), settings GET/PUT (defaults NGN+reminder_days [30,14,7,3,1], business_name+receipt_prefix persistence), Cloudinary upload (1x1 PNG -> res.cloudinary.com secure_url + .exe -> 400), notice create/patch/tenant-list/acknowledge (NTC- prefix), PDF generation (receipt, tenant, notice, occupancy, income, expenses, pnl, expiring — all return %PDF + >1KB), scheduler run-now, notifications unread-count/read/read-all/delete, and the move-out -> archive -> assign-existing -> unit history flow. Also re-ran iteration-1 regression suite (test_rentorax_flow.py) — 19/19 still PASS. Result: Phase-2 backend 17/18 (94%); the ONE failing test is the move-out/assign-existing/unit-history endpoints which DO NOT EXIST (curl returns 404 even unauthenticated). Frontend Playwright verified all key Phase-2 data-testids exist: forgot-link, /forgot-password success block with DEV reset_url, /landlord/settings (settings-business-name + settings-save-btn), /landlord/notices (new-notice-btn), notifications-btn in topbar, /landlord/properties Add dialog with prop-photos-upload drag-drop. Login form does NOT use data-testid login-email/login-submit (works fine with type-selectors though).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/tenants/{id}/move-out", "issue": "Endpoint is missing entirely. Returns 404 'Not Found' from FastAPI. The review_request says it should archive the tenant + free the unit + preserve payment history. /app/backend/routes/landlord_routes.py has no move-out/move_out/moveout handler.", "priority": "CRITICAL"},
+      {"endpoint": "POST /api/units/{unit_id}/assign-existing", "issue": "Endpoint is missing entirely. Returns 404. Should reactivate an archived tenant onto a vacant unit (archived=false, status=active, unit -> occupied).", "priority": "CRITICAL"},
+      {"endpoint": "GET /api/units/{unit_id}/history", "issue": "Endpoint is missing entirely. Returns 404. Should return occupancy history (list of leases) for a unit.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/auth/reset-password", "issue": "Field is named `new_password` (not `password`). Confirmed in /app/backend/routes/password_reset_routes.py L52 (ConsumeResetIn). The frontend reset-password page must POST {token, new_password} — verify wiring."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Login form", "issue": "Login page inputs do not have data-testid='login-email' / 'login-password' / 'login-submit' (script needed input[type=email] fallback). Add testids for stable E2E.", "selector": "/login form inputs", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Tenant move-out from UI (/landlord/tenants tenant-moveout-{id} -> MoveOutDialog -> mo-confirm)", "issue": "Frontend dialog exists but the backend endpoint POST /api/tenants/{id}/move-out is 404, so the workflow cannot complete. Same for PropertyDetail Assign-tenant + unit-history dialogs.", "affected_selectors": ["[data-testid^='tenant-moveout-']", "[data-testid='mo-confirm']", "[data-testid^='assign-tenant-']", "[data-testid='assign-submit']", "[data-testid^='unit-history-']"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase2.py",
+    "/app/backend/tests/test_rentorax_flow.py",
+    "/app/test_reports/pytest/phase2_results.xml",
+    "/app/test_reports/pytest/regression_results.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Implement POST /api/tenants/{id}/move-out in /app/backend/routes/landlord_routes.py — accept {checklist, deposit_refund, notes}, set tenant archived=true + status='vacated', mark unit vacant, append to unit occupancy history collection, preserve payments.",
+    "CRITICAL: Implement POST /api/units/{unit_id}/assign-existing in /app/backend/routes/landlord_routes.py — accept {tenant_id, lease_start, lease_expiry}, reactivate tenant (archived=false, status='active'), set unit status='occupied', open a new lease record in unit history.",
+    "CRITICAL: Implement GET /api/units/{unit_id}/history — return chronological list of occupancy entries (tenant_id, full_name, lease_start, lease_expiry, vacated_at).",
+    "LOW: Add data-testid='login-email', 'login-password', 'login-submit' to /app/frontend/src/pages/Login.jsx so future automation doesn't depend on input type selectors.",
+    "Verify the /reset-password React page posts the field as `new_password` (the API rejects `password`)."
+  ],
+  "critical_code_review_comments": [
+    "Three Phase-2 endpoints documented in review_request (move-out, assign-existing, unit history) are completely missing from /app/backend/routes/landlord_routes.py — confirmed by grep + 404 from FastAPI. The frontend pages (MoveOutDialog, Tenants.jsx tenant-moveout-{id} button, PropertyDetail assign-tenant/unit-history dialogs) appear to be wired but cannot succeed without these routes.",
+    "Schema migrations DID add `archived` and `status` to tenants per agent context — but with no endpoints to write those fields, archive/restore can't happen via UI/API.",
+    "Reset password param name `new_password` should be documented; consider accepting `password` as alias for forwards-compat with common clients."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase2.py (new — 18 tests for Phase-2 features)"
+  ],
+  "success_rate": {
+    "backend": "97% Phase-2 (17/18) + 100% regression (19/19) = 36/37 overall",
+    "frontend": "~95% (all Phase-2 testids verified present; move-out + assign-existing flows blocked by missing backend endpoints)"
+  },
+  "test_credentials": "Super admin admin@rentorax.com / Admin@2026 (original password restored at end of forgot-password test). Test landlords created at runtime and cleaned up by test_zz_cleanup.",
+  "seed_data_creation": "test_phase2.py creates 2 throwaway landlords (ph2_ll_* + ph2_lockout_*) and cleans both up at end via DELETE /api/admin/landlords/{id} cascade. No persistent seed data. NOTE: the lockout test leaves 6 failed-login records in db.login_attempts for ph2_lockout_*@test.com (which is then cascade-deleted).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All Phase-2 backend & frontend artefacts verified EXCEPT move-out / assign-existing / unit-history endpoints which are 404. Main agent must implement those three routes in /app/backend/routes/landlord_routes.py for full sign-off. test_phase2.py is parametrised so it'll re-test PDF endpoints individually. The pytest.ini still has `-n 2 --dist loadscope`; run Phase-2 suite with `-n 0` because tests share STATE dict. Also: reset-password expects `new_password` (NOT `password`) — frontend & docs should match. Cloudinary uploads actually hit Cloudinary, so tiny PNG is enough; check the rentorax/{landlord_id}/properties folder if cleanup matters.",
+  "rca of the issue": "Missing move-out/assign-existing/history endpoints: server.py + migrations.py + scheduler_jobs.py reference status values like notice_issued/move_out_scheduled/vacated/archived (scheduler_jobs.py:36 explicitly skips override for those), but no FastAPI handlers were added to write those statuses. Repro: `curl -s -o /dev/null -w '%{http_code}' -X POST https://diaspora-homes-dev.preview.emergentagent.com/api/tenants/x/move-out` returns 404. Same for /units/x/assign-existing (404) and GET /units/x/history (404). grep -rn 'move-out|assign-existing|/history' /app/backend/routes/ returns no matches. Mitigation: add 3 endpoints to landlord_routes.py. move-out should update db.tenants {archived:true, status:'vacated', vacated_at}, db.units {status:'vacant', current_tenant_id:None}, insert into db.unit_occupancy_history; assign-existing should validate tenant.landlord_id == current_user.id, tenant.archived == True, then revert: db.tenants {archived:false, status:'active', property_id, unit_id, lease_start, lease_expiry} + db.units status='occupied' + new history row; GET /units/{id}/history returns sorted history rows excluding _id."
+}

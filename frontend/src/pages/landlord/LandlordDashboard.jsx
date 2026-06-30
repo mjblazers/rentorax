@@ -4,7 +4,7 @@ import PageHeader from "@/components/PageHeader";
 import StatCard from "@/components/StatCard";
 import ExpiryBadge from "@/components/ExpiryBadge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Users, Banknote, TrendingUp, AlertTriangle, Wrench } from "lucide-react";
+import { Building2, Users, Banknote, TrendingUp, AlertTriangle, Wrench, Wallet, AlertOctagon } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart, Bar,
 } from "recharts";
@@ -18,13 +18,13 @@ export default function LandlordDashboard() {
       <PageHeader title="Your portfolio" subtitle="A clear view of buildings, tenants and cash flow." />
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard testId="ld-stat-today" label="Today's revenue" value={formatNaira(d?.today_revenue)} icon={Wallet} accent="green" />
+        <StatCard testId="ld-stat-monthly-rev" label="This month income" value={formatNaira(d?.monthly_revenue)} icon={Banknote} accent="primary" />
+        <StatCard testId="ld-stat-outstanding" label="Outstanding (overdue)" value={d?.outstanding_count ?? "—"} icon={AlertOctagon} accent="rose" />
+        <StatCard testId="ld-stat-open-tickets" label="Open tickets" value={d?.open_tickets ?? "—"} icon={Wrench} accent="amber" />
         <StatCard testId="ld-stat-properties" label="Properties" value={d?.total_properties ?? "—"} icon={Building2} />
         <StatCard testId="ld-stat-units" label="Units" value={d?.total_units ?? "—"} hint={`${d?.occupied_units ?? 0} occupied · ${d?.vacant_units ?? 0} vacant`} icon={Building2} accent="accent" />
-        <StatCard testId="ld-stat-tenants" label="Tenants" value={d?.total_tenants ?? "—"} icon={Users} accent="blue" />
         <StatCard testId="ld-stat-occupancy" label="Occupancy" value={d ? `${Math.round(d.occupancy_rate)}%` : "—"} icon={TrendingUp} accent="green" />
-        <StatCard testId="ld-stat-monthly-rev" label="This month income" value={formatNaira(d?.monthly_revenue)} icon={Banknote} accent="primary" />
-        <StatCard testId="ld-stat-yearly-rev" label="This year income" value={formatNaira(d?.yearly_revenue)} icon={Banknote} accent="accent" />
-        <StatCard testId="ld-stat-monthly-exp" label="This month expenses" value={formatNaira(d?.monthly_expenses)} icon={Wrench} accent="amber" />
         <StatCard testId="ld-stat-net" label="Net income (year)" value={formatNaira(d?.net_income_yearly)} icon={TrendingUp} accent={d && d.net_income_yearly >= 0 ? "green" : "rose"} />
       </div>
 

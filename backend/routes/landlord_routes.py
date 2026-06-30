@@ -14,6 +14,14 @@ from models import (
     MaintenanceIn, MaintenanceUpdateIn, CaretakerCreateIn, CaretakerUpdateIn,
     AnnouncementIn,
 )
+from pydantic import BaseModel
+from typing import Optional
+from mailer import (
+    welcome_caretaker, welcome_tenant, payment_receipt, maintenance_update,
+    announcement as announcement_email, send_email,
+)
+import os
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 
 router = APIRouter(prefix="/api", tags=["landlord"])
 LANDLORD_OR_CARETAKER = Depends(require_roles("landlord", "caretaker"))
@@ -42,13 +50,17 @@ async def landlord_dashboard(user: dict = LANDLORD_OR_CARETAKER):
 
     payments = await db.payments.find({"landlord_id": landlord_id}).to_list(10000)
     now = datetime.now(timezone.utc)
+    today_iso = now.date().isoformat()
     monthly_rev = 0.0
     yearly_rev = 0.0
+    today_rev = 0.0
     for p in payments:
         try:
             dt = datetime.fromisoformat(p["payment_date"].replace("Z", "+00:00"))
         except Exception:
             continue
+        if p["payment_date"][:10] == today_iso:
+            today_rev += float(p.get("amount") or 0)
         if dt.year == now.year:
             yearly_rev += float(p.get("amount") or 0)
             if dt.month == now.month:
@@ -116,12 +128,15 @@ async def landlord_dashboard(user: dict = LANDLORD_OR_CARETAKER):
         "vacant_units": vacant,
         "occupancy_rate": (occupied / units * 100) if units else 0,
         "total_tenants": tenants,
+        "today_revenue": today_rev,
         "monthly_revenue": monthly_rev,
         "yearly_revenue": yearly_rev,
         "monthly_expenses": monthly_exp,
         "yearly_expenses": yearly_exp,
         "net_income_monthly": monthly_rev - monthly_exp,
         "net_income_yearly": yearly_rev - yearly_exp,
+        "outstanding_count": len(expired),
+        "open_tickets": await db.maintenance_tickets.count_documents({"landlord_id": landlord_id, "status": {"$nin": ["Completed", "Cancelled"]}}),
         "expiring_soon": expiring_soon[:10],
         "expired": expired[:10],
         "expiring_count": len(expiring_soon),
@@ -272,12 +287,14 @@ async def delete_unit(unit_id: str, user: dict = Depends(require_roles("landlord
 
 # ====== TENANTS ======
 @router.get("/tenants")
-async def list_tenants(q: str = "", property_id: str = None, user: dict = LANDLORD_OR_CARETAKER):
+async def list_tenants(q: str = "", property_id: str = None, include_archived: bool = False, user: dict = LANDLORD_OR_CARETAKER):
     from server import db
     if user["role"] == "caretaker" and not caretaker_can(user, "view_tenants"):
         raise HTTPException(403, "Not allowed")
     landlord_id = get_landlord_scope(user)
     query = {"landlord_id": landlord_id}
+    if not include_archived:
+        query["archived"] = {"$ne": True}
     if property_id:
         query["property_id"] = property_id
     if user["role"] == "caretaker" and not user.get("all_properties"):
@@ -464,7 +481,20 @@ async def record_payment(payload: PaymentIn, user: dict = LANDLORD_OR_CARETAKER)
     await log_activity(db, user, "payment_record", "payment", doc["_id"], {"amount": payload.amount})
     if tenant.get("user_id"):
         await push_notification(db, tenant["user_id"], "Payment recorded",
-                                f"₦{payload.amount:,.2f} received. Receipt: {receipt_number}", "payment")
+                                f"NGN {payload.amount:,.2f} received. Receipt: {receipt_number}", "success",
+                                link="/tenant/payments")
+        # email tenant
+        if tenant.get("email"):
+            try:
+                subject, html = payment_receipt(
+                    tenant.get("full_name") or "tenant",
+                    f"NGN {payload.amount:,.2f}", receipt_number,
+                    tenant.get("property_name") or "", tenant.get("unit_name") or "",
+                    f"{FRONTEND_URL}/tenant/payments",
+                )
+                send_email(tenant["email"], subject, html)
+            except Exception:
+                pass
     return doc_out(doc)
 
 
@@ -544,7 +574,16 @@ async def update_maintenance(ticket_id: str, payload: MaintenanceUpdateIn, user:
         tenant = await db.tenants.find_one({"_id": fresh["tenant_id"]})
         if tenant and tenant.get("user_id"):
             await push_notification(db, tenant["user_id"], "Maintenance update",
-                                    f"Ticket {fresh.get('ticket_number')} is now: {updates['status']}", "maintenance")
+                                    f"Ticket {fresh.get('ticket_number')} is now: {updates['status']}", "info")
+            if tenant.get("email"):
+                try:
+                    subject, html = maintenance_update(
+                        tenant.get("full_name") or "tenant", fresh.get("ticket_number") or "",
+                        updates["status"], f"{FRONTEND_URL}/tenant/maintenance",
+                    )
+                    send_email(tenant["email"], subject, html)
+                except Exception:
+                    pass
     return doc_out(fresh)
 
 

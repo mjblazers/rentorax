@@ -6,7 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, FileText } from "lucide-react";
+
+const BACKEND = process.env.REACT_APP_BACKEND_URL;
 
 function downloadCsv(rows, filename) {
   if (!rows.length) return;
@@ -39,10 +41,13 @@ export default function Reports() {
         <TabsContent value="occupancy">
           <Card className="border-border shadow-none">
             <CardContent className="p-0">
-              <div className="flex justify-end p-3">
+              <div className="flex justify-end p-3 gap-2">
+                <a href={`${BACKEND}/api/pdf/report/occupancy`} target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="outline" data-testid="export-occupancy-pdf"><FileText className="h-4 w-4 mr-1" /> PDF</Button>
+                </a>
                 <Button size="sm" variant="outline" data-testid="export-occupancy"
                         onClick={() => downloadCsv(occ.map((r) => ({ Property: r.property_name, Total: r.total_units, Occupied: r.occupied, Vacant: r.vacant, Rate: r.rate.toFixed(1) + "%" })), "occupancy.csv")}>
-                  <Download className="h-4 w-4 mr-1" /> Export CSV
+                  <Download className="h-4 w-4 mr-1" /> CSV
                 </Button>
               </div>
               <Table className="striped-table">
@@ -66,10 +71,13 @@ export default function Reports() {
         <TabsContent value="expiring">
           <Card className="border-border shadow-none">
             <CardContent className="p-0">
-              <div className="flex justify-end p-3">
+              <div className="flex justify-end p-3 gap-2">
+                <a href={`${BACKEND}/api/pdf/report/expiring`} target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="outline" data-testid="export-expiring-pdf"><FileText className="h-4 w-4 mr-1" /> PDF</Button>
+                </a>
                 <Button size="sm" variant="outline" data-testid="export-expiring"
                         onClick={() => downloadCsv(exp.map((r) => ({ Tenant: r.tenant_name, Property: r.property_name, Unit: r.unit_name, Expiry: r.lease_expiry, Days: r.days, Status: r.status, AmountPaid: r.amount_paid })), "expiring-leases.csv")}>
-                  <Download className="h-4 w-4 mr-1" /> Export CSV
+                  <Download className="h-4 w-4 mr-1" /> CSV
                 </Button>
               </div>
               <Table className="striped-table">

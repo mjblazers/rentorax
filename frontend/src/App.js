@@ -11,6 +11,7 @@ import AppShell from "@/components/AppShell";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import ChangePassword from "@/pages/ChangePassword";
+import { ForgotPassword, ResetPassword } from "@/pages/PasswordReset";
 
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminLandlords from "@/pages/admin/Landlords";
@@ -28,6 +29,8 @@ import Accounting from "@/pages/landlord/Accounting";
 import Caretakers from "@/pages/landlord/Caretakers";
 import Reports from "@/pages/landlord/Reports";
 import LandlordAnnouncements from "@/pages/landlord/Announcements";
+import Notices from "@/pages/landlord/Notices";
+import Settings from "@/pages/landlord/Settings";
 
 import CaretakerDashboard from "@/pages/caretaker/CaretakerDashboard";
 
@@ -35,6 +38,7 @@ import TenantDashboard from "@/pages/tenant/TenantDashboard";
 import TenantPayments from "@/pages/tenant/TenantPayments";
 import TenantMaintenance from "@/pages/tenant/TenantMaintenance";
 import TenantAnnouncements from "@/pages/tenant/TenantAnnouncements";
+import TenantNotices from "@/pages/tenant/TenantNotices";
 import TenantProfile from "@/pages/tenant/TenantProfile";
 
 export default function App() {
@@ -45,6 +49,8 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Super Admin */}
             <Route element={<ProtectedRoute allow={["super_admin"]}><AppShell /></ProtectedRoute>}>
@@ -63,10 +69,12 @@ export default function App() {
               <Route path="/landlord/tenants/:id" element={<TenantDetail />} />
               <Route path="/landlord/payments" element={<Payments />} />
               <Route path="/landlord/maintenance" element={<Maintenance />} />
+              <Route path="/landlord/notices" element={<Notices />} />
               <Route path="/landlord/accounting" element={<Accounting />} />
               <Route path="/landlord/caretakers" element={<Caretakers />} />
               <Route path="/landlord/reports" element={<Reports />} />
               <Route path="/landlord/announcements" element={<LandlordAnnouncements />} />
+              <Route path="/landlord/settings" element={<Settings />} />
             </Route>
 
             {/* Caretaker — shares some landlord pages */}
@@ -82,11 +90,11 @@ export default function App() {
               <Route path="/tenant" element={<TenantDashboard />} />
               <Route path="/tenant/payments" element={<TenantPayments />} />
               <Route path="/tenant/maintenance" element={<TenantMaintenance />} />
+              <Route path="/tenant/notices" element={<TenantNotices />} />
               <Route path="/tenant/announcements" element={<TenantAnnouncements />} />
               <Route path="/tenant/profile" element={<TenantProfile />} />
             </Route>
 
-            {/* Shared */}
             <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
               <Route path="/account/password" element={<ChangePassword />} />
             </Route>

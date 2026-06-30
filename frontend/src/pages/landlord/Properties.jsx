@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import FileUpload from "@/components/FileUpload";
 
 const PROPERTY_TYPES = ["Hostel", "Flats", "Duplex", "Self Contain", "Apartment", "Estate", "Commercial Building"];
 const UNIT_PREFIXES = ["Room", "Flat", "Apt", "Shop", "Office", "Block", "Unit"];
@@ -101,6 +102,19 @@ export default function Properties() {
                   <Textarea data-testid="prop-desc-input" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
                 <div><Label>Photo URL (optional)</Label>
                   <Input data-testid="prop-photo-input" placeholder="https://…" value={form.photos[0] || ""} onChange={(e) => setForm({ ...form, photos: e.target.value ? [e.target.value] : [] })} /></div>
+                <div className="sm:col-span-2">
+                  <Label>Property photos</Label>
+                  <FileUpload
+                    folder="properties"
+                    accept="image/*"
+                    multiple
+                    maxFiles={6}
+                    value={form.photos}
+                    onChange={(urls) => setForm({ ...form, photos: urls })}
+                    label="Drop photos or click to browse"
+                    testId="prop-photos-upload"
+                  />
+                </div>
                 <div><Label>Number of units</Label>
                   <Input data-testid="prop-num-units-input" type="number" min="0" value={form.num_units} onChange={(e) => setForm({ ...form, num_units: Number(e.target.value) })} /></div>
                 <div><Label>Unit prefix</Label>

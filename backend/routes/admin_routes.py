@@ -164,7 +164,16 @@ async def delete_landlord(landlord_id: str, user: dict = ADMIN_DEP):
 async def activity_logs(limit: int = Query(100, le=500), user: dict = ADMIN_DEP):
     from server import db
     logs = await db.activity_logs.find({}).sort("created_at", -1).to_list(limit)
-    return [doc_out(l) for l in logs]
+    return [doc_out(log) for log in logs]
+
+
+@router.post("/scheduler/run-now")
+async def run_scheduler_now(user: dict = ADMIN_DEP):
+    """Manually trigger daily checks (for testing / catch-up)."""
+    from server import db
+    from scheduler_jobs import run_now
+    await run_now(db)
+    return {"ok": True}
 
 
 @router.post("/announcements")

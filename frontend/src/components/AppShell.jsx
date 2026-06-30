@@ -4,8 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   LayoutDashboard, Building2, Users, CreditCard, Wrench, Calculator,
-  ShieldCheck, FileText, Settings, LogOut, Moon, Sun, Bell, Menu, X,
-  UserCog, Megaphone, BarChart3, ScrollText, Home,
+  ShieldCheck, FileText, Settings, LogOut, Moon, Sun, Menu, X,
+  UserCog, Megaphone, BarChart3, ScrollText, Home, ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -13,6 +13,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import NotificationBell from "@/components/NotificationBell";
 
 const navByRole = {
   super_admin: [
@@ -27,10 +28,12 @@ const navByRole = {
     { to: "/landlord/tenants", label: "Tenants", icon: Users },
     { to: "/landlord/payments", label: "Payments", icon: CreditCard },
     { to: "/landlord/maintenance", label: "Maintenance", icon: Wrench },
+    { to: "/landlord/notices", label: "Notices", icon: ShieldAlert },
     { to: "/landlord/accounting", label: "Accounting", icon: Calculator },
     { to: "/landlord/caretakers", label: "Caretakers", icon: UserCog },
     { to: "/landlord/reports", label: "Reports", icon: BarChart3 },
     { to: "/landlord/announcements", label: "Announcements", icon: Megaphone },
+    { to: "/landlord/settings", label: "Settings", icon: Settings },
   ],
   caretaker: [
     { to: "/caretaker", label: "Overview", icon: LayoutDashboard, end: true },
@@ -42,6 +45,7 @@ const navByRole = {
     { to: "/tenant", label: "Overview", icon: LayoutDashboard, end: true },
     { to: "/tenant/payments", label: "Payment History", icon: CreditCard },
     { to: "/tenant/maintenance", label: "Maintenance", icon: Wrench },
+    { to: "/tenant/notices", label: "Notices", icon: ShieldAlert },
     { to: "/tenant/announcements", label: "Announcements", icon: Megaphone },
     { to: "/tenant/profile", label: "Profile", icon: UserCog },
   ],
@@ -143,9 +147,8 @@ export default function AppShell() {
               >
                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <Button variant="ghost" size="icon" data-testid="notifications-btn">
-                <Bell className="h-4 w-4" />
-              </Button>
+              <Button variant="ghost" size="icon" data-testid="notifications-btn-old" style={{display:'none'}}>x</Button>
+              <NotificationBell />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button data-testid="profile-menu-btn" className="flex items-center gap-2 pl-2 pr-3 py-1 rounded-full border border-border hover:bg-muted transition">
