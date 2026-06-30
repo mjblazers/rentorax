@@ -1,0 +1,172 @@
+{
+  "theme": "light_and_dark",
+  "archetype": "Archetype 1: Organic & Earthy",
+  "reasoning": "RentoraX deals with real estate and significant financial transactions. It requires a grounded, trustworthy, and professional fintech feel. The earthy tones (Forest Greens, Warm Sands, Stone Greys, Terracotta) resonate with physical property, trust, and wealth. This avoids the cold or generic 'SaaS purple' look, providing a sophisticated, enterprise-grade aesthetic suitable for Nigerian landlords in the diaspora.",
+  "typography": {
+    "headings": {
+      "family": "Outfit, sans-serif",
+      "weights": ["400", "500", "600", "700"],
+      "tracking": "tracking-tight"
+    },
+    "body": {
+      "family": "IBM Plex Sans, sans-serif",
+      "weights": ["400", "500"],
+      "tracking": "tracking-normal"
+    },
+    "scale": {
+      "h1": "text-4xl sm:text-5xl lg:text-5xl",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl",
+      "h3": "text-xl sm:text-2xl",
+      "h4": "text-lg sm:text-xl",
+      "body": "text-base",
+      "small": "text-sm",
+      "tiny_label": "text-xs tracking-[0.2em] uppercase"
+    }
+  },
+  "colors": {
+    "light_mode": {
+      "background": "#FAFAF9",
+      "surface": "#FFFFFF",
+      "border": "#E7E5E4",
+      "text_primary": "#1C1917",
+      "text_secondary": "#57534E",
+      "brand_primary": "#166534",
+      "brand_primary_hover": "#14532D",
+      "accent": "#C2410C"
+    },
+    "dark_mode": {
+      "background": "#0C0A09",
+      "surface": "#1C1917",
+      "border": "#292524",
+      "text_primary": "#FAFAF9",
+      "text_secondary": "#A8A29E",
+      "brand_primary": "#22C55E",
+      "brand_primary_hover": "#4ADE80",
+      "accent": "#EA580C"
+    },
+    "rent_expiry_matrix": {
+      "green_safe": {
+        "bg": "bg-green-100 dark:bg-green-900/30",
+        "text": "text-green-800 dark:text-green-400",
+        "border": "border-green-200 dark:border-green-800",
+        "condition": ">90 days"
+      },
+      "yellow_warning": {
+        "bg": "bg-yellow-100 dark:bg-yellow-900/30",
+        "text": "text-yellow-800 dark:text-yellow-400",
+        "border": "border-yellow-200 dark:border-yellow-800",
+        "condition": "60-90 days"
+      },
+      "orange_urgent": {
+        "bg": "bg-orange-100 dark:bg-orange-900/30",
+        "text": "text-orange-800 dark:text-orange-400",
+        "border": "border-orange-200 dark:border-orange-800",
+        "condition": "14-59 days"
+      },
+      "red_critical": {
+        "bg": "bg-red-100 dark:bg-red-900/30",
+        "text": "text-red-800 dark:text-red-400",
+        "border": "border-red-200 dark:border-red-800",
+        "condition": "<14 days"
+      },
+      "dark_red_expired": {
+        "bg": "bg-rose-100 dark:bg-rose-900/40",
+        "text": "text-rose-900 dark:text-rose-300",
+        "border": "border-rose-300 dark:border-rose-800",
+        "condition": "Expired"
+      }
+    }
+  },
+  "layout_and_spacing": {
+    "strategy": "The Control Room Grid",
+    "dashboard_grid": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+    "spacing_scale": "Generous spacing. Use p-6 or p-8 for cards to prevent text collision.",
+    "sidebar": "Collapsible left-sidebar. F-Pattern reading hierarchy. Top-Left must contain the single 'North Star' metric.",
+    "alignment": "Left-align all dense content and tables. Center-align only empty states or modal CTAs."
+  },
+  "surfaces_and_micro_themes": {
+    "dashboard_cards": "Flat background, 1px subtle border (border-border), NO default shadow. On hover: slight lift (-translate-y-1), subtle shadow (shadow-md).",
+    "glassmorphism": "Used ONLY for sticky headers. Light: bg-white/80 backdrop-blur-xl border-b border-border/50. Dark: bg-[#0C0A09]/80 backdrop-blur-xl border-b border-border/50.",
+    "data_tables": "Grid Borders style. Striped rows (Zebra striping) for better row tracking on long tenant/payment lists."
+  },
+  "components": {
+    "shadcn": [
+      "Card",
+      "Table",
+      "Tabs",
+      "Select",
+      "Dialog",
+      "Button",
+      "Input",
+      "Badge",
+      "Avatar",
+      "DropdownMenu"
+    ],
+    "charts": "Recharts (Bar charts for income/expense, Line charts for trends, Donut charts for occupancy). Keep charts simple, no more than 3 variables.",
+    "icons_library": "@phosphor-icons/react",
+    "custom": [
+      "Property Card (Photo, occupancy status badge, quick actions)",
+      "Maintenance Kanban Board (Drag and drop statuses: Open, In Progress, Resolved)",
+      "Rent Expiry Tracker Widget (Uses rent_expiry_matrix colors)",
+      "Payment Receipt Generator (Export functionality context)"
+    ]
+  },
+  "accessibility_and_interactions": {
+    "contrast": "Ensure minimum 4.5:1 for normal text. Use APCA standards.",
+    "hover_states": "Always explicitly set text color on hover (e.g., hover:bg-stone-900 hover:text-white).",
+    "testing": "All interactive elements MUST have data-testid attribute (e.g., data-testid='tenant-search-input')."
+  },
+  "media_and_images": {
+    "rules": "Never use placeholder text. Use the provided URLs.",
+    "property_exteriors": [
+      {
+        "url": "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBhcGFydG1lbnQlMjBidWlsZGluZyUyMGV4dGVyaW9yfGVufDB8fHx8MTc4Mjg0NzQzOHww&ixlib=rb-4.1.0&q=85",
+        "description": "High rise apartment, use for Estates/Flats"
+      },
+      {
+        "url": "https://images.pexels.com/photos/18153132/pexels-photo-18153132.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Contemporary apartment building, use for premium duplex/flats"
+      },
+      {
+        "url": "https://images.pexels.com/photos/35339499/pexels-photo-35339499.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Minimalist apartment, use for self-contain/hostels"
+      }
+    ],
+    "property_interiors": [
+      {
+        "url": "https://images.unsplash.com/photo-1724582586529-62622e50c0b3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDR8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBsaXZpbmclMjByb29tJTIwaW50ZXJpb3J8ZW58MHx8fHwxNzgyODQ3NDM4fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Modern living room, use for unit details"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1564078516393-cf04bd966897?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDR8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBsaXZpbmclMjByb29tJTIwaW50ZXJpb3J8ZW58MHx8fHwxNzgyODQ3NDM4fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Cozy living space, use for unit interior gallery"
+      }
+    ],
+    "user_avatars": [
+      {
+        "url": "https://images.unsplash.com/photo-1614023342667-6f060e9d1e04?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwcHJvZmVzc2lvbmFsJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzgyODQ3NDM4fDA&ixlib=rb-4.1.0&q=85",
+        "description": "African male professional, use for Landlord/Caretaker"
+      },
+      {
+        "url": "https://images.pexels.com/photos/31307734/pexels-photo-31307734.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "African female professional, use for Super Admin/Tenant"
+      },
+      {
+        "url": "https://images.pexels.com/photos/28426641/pexels-photo-28426641.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "African male, use for Tenant/Guarantor profile"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Initialize standard React app with Tailwind CSS and shadcn/ui components.",
+    "Install Phosphor Icons: yarn add @phosphor-icons/react",
+    "Install Recharts for accounting dashboards: yarn add recharts",
+    "Setup routing for 4 distinct roles: /admin, /landlord, /caretaker, /tenant. Each gets its own specialized dashboard layout with a collapsible sidebar.",
+    "Implement the layout using 'The Control Room Grid' pattern (dense, border-based, high information density).",
+    "Apply the Rent Expiry Matrix logic religiously. It must govern the color of expiry badges across all tenant and property tables.",
+    "Create a Kanban component for Maintenance Tickets using standard HTML5 drag-and-drop or a lightweight library.",
+    "Ensure the UI completely avoids the 'generic SaaS purple' look. Stick to the Organic & Earthy palette (Forest Greens, Warm Sands, Stone Greys).",
+    "All interactive elements MUST include data-testid attributes.",
+    "Support both light mode (default) and dark mode (vital for professional SaaS)."
+  ]
+}
