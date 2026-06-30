@@ -1,0 +1,41 @@
+{
+  "summary": "Phase-2 retest after the 3 missing lifecycle endpoints (move-out, assign-existing, unit-history) were added to /app/backend/routes/landlord_routes.py. Backend regression (test_rentorax_flow.py): 19/19 PASS. Backend Phase-2 (test_phase2.py): 17/18 PASS — the new move-out and assign-existing endpoints both return 200 with correct side-effects (tenant archived/reactivated, unit vacant/occupied, payments preserved), but GET /api/units/{unit_id}/history fails the >=2 entries assertion because it queries db.tenants by unit_id (only 1 row when the same tenant is reassigned to the same unit). Frontend Playwright verified the full move-out happy path through the UI: clicked tenant-moveout-{id}, checked all 5 mo-* checkboxes, clicked mo-confirm, the tenant disappeared from /landlord/tenants default list, PropertyDetail showed unit as Vacant with assign-tenant-{uid} and unit-history-{uid} buttons. assign-existing dialog opens correctly but the 'Archived tenant' picker is a native HTML <select> (not a shadcn Select with data-testid on items), so Playwright text-click resolved to a hidden <option> and the form submitted without a tenant_id — UI assign flow could not be auto-driven. unit-history button is wired and clickable.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/units/{unit_id}/history", "issue": "Returns only 1 record after move-out + re-assign of same tenant to same unit. Implementation queries db.tenants by unit_id, so it returns the single current tenant row (now reactivated). The spec / test expects each tenancy (prior + current) as a separate entry — should merge db.move_outs (prior tenancies for this unit_id) + the current tenant row, sorted by lease_start desc."},
+      {"endpoint": "POST /api/tenants/{id}/move-out", "issue": "MoveOutChecklist pydantic model accepts only top-level fields (rent_paid, utilities_settled, ...) but the test in test_phase2.py POSTs {\"checklist\":{...}, \"deposit_refund\":0, \"notes\":\"ok\"} (nested). Because every field has a default, pydantic silently ignores it and returns 200 with an empty checklist persisted. Consider: accept either shape, or document that the body must be flat (which the frontend MoveOutDialog does send correctly)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "PropertyDetail -> Assign existing tenant", "issue": "The Archived-tenant picker is rendered as a native HTML <select> (its <option> elements are hidden in the DOM). Without a data-testid on each option, automated UI tests cannot reliably pick a tenant — Playwright's click on the option text fails ('Element is not visible'). Human users are unaffected; automation is. Replace with shadcn <Select>/SelectItem (each item with data-testid=`assign-tenant-option-{id}`) or use a native select with id+name attributes to permit page.select_option(...).", "affected_selectors": ["[data-testid=\"assign-tenant-select\"]", "[data-testid=\"assign-submit\"]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase2.py",
+    "/app/backend/tests/test_rentorax_flow.py",
+    "/app/test_reports/pytest/phase2_results.xml",
+    "/app/test_reports/pytest/regression_results.xml"
+  ],
+  "action_items": [
+    "Fix GET /api/units/{unit_id}/history in /app/backend/routes/landlord_routes.py to also include past tenancies for the unit (read db.move_outs where unit_id == :id, project each move_out into the same row shape using move_out snapshot fields, then append the current tenant row if status='active'). Sort by lease_start desc / moved_out_at desc. This will flip test_moveout_then_assign_existing_and_history from FAIL to PASS (18/18).",
+    "Optional: make MoveOutChecklist tolerant of {checklist:{...}, deposit_refund, notes} payload OR document the flat schema in the API spec.",
+    "Optional: replace the native <select> in PropertyDetail Assign-tenant dialog with shadcn Select+SelectItem using data-testid=`assign-tenant-option-{tenant_id}` for each archived tenant, so automation can drive the flow."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/routes/landlord_routes.py L525-542 (unit_history): currently only queries db.tenants — it must union with db.move_outs to surface historical leases. Right now a unit that has had N prior tenants will show only the current one. This contradicts the review_request: 'occupancy history sorted by lease_start desc, with full_name, lease dates, vacated_at, status, archived flag for each prior tenancy.'",
+    "MoveOutChecklist (L439-446) silently swallows unknown keys because all fields are optional+defaulted. This caused test_phase2 to send {checklist:{...}} and still get 200 with an empty persisted checklist. Add Config.extra='forbid' or accept a wrapper schema.",
+    "assign-existing (L491-522) correctly checks landlord_id ownership and rejects unit-already-occupied with 400 — good. Consider also rejecting when the tenant is not archived (status='active' on a different unit) to prevent accidental relocation."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "Phase-2 17/18 (94%); regression 19/19 (100%); overall 36/37 (97%)", "frontend": "move-out flow 100%; assign-existing UI-driven flow blocked by native <select> (backend endpoint itself works — verified via test_phase2.py up to L308)"},
+  "test_credentials": "Super admin admin@rentorax.com / Admin@2026 (unchanged). Test landlords are created+cleaned up by tests.",
+  "seed_data_creation": "test_phase2.py creates 2 throwaway landlords (ph2_ll_* + ph2_lockout_*) and cleans both via DELETE /api/admin/landlords/{id} cascade. Playwright UI test creates ph2ui_* and also cleans it up.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Only one assertion remains red in the Phase-2 suite: history length. Fix is small (merge db.move_outs into unit_history). Run with `REACT_APP_BACKEND_URL=https://diaspora-homes-dev.preview.emergentagent.com python -m pytest backend/tests/test_phase2.py -v -n 0` (pytest.ini sets `-n 2` which breaks tests that share STATE). Frontend assign-existing dialog uses native <select>; for automation either switch to shadcn Select+SelectItem with per-item data-testid, or use `page.select_option('[data-testid=\"assign-tenant-select\"]', value=tenant_id)`.",
+  "rca of the issue": "GET /api/units/{unit_id}/history queries db.tenants {unit_id, landlord_id} only. When the same tenant moves out and is re-assigned to the same unit, db.tenants still holds 1 row for that tenant (reactivated, archived=False), so the endpoint returns 1 entry. The move-out workflow already inserts a snapshot into db.move_outs (L456-466) — these are the prior tenancies. Mitigation: in unit_history, also `db.move_outs.find({landlord_id, unit_id}).sort('moved_out_at', -1)` and append projected rows {id, full_name (from snapshot), lease_start, lease_expiry, vacated_at=moved_out_at, status='vacated', archived=True, amount_paid (from snapshot if stored)} BEFORE / merged-with the current tenant row, then sort by lease_start desc. Also ensure the snapshot in db.move_outs persists lease_start/lease_expiry so prior dates are visible."
+}

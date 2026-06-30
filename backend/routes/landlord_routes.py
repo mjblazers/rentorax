@@ -419,17 +419,127 @@ async def update_tenant(tenant_id: str, payload: TenantUpdateIn, user: dict = LA
 
 @router.delete("/tenants/{tenant_id}")
 async def delete_tenant(tenant_id: str, user: dict = Depends(require_roles("landlord"))):
+    """Archive a tenant. Preserves all history. Unit becomes vacant."""
     from server import db
     tenant = await db.tenants.find_one({"_id": tenant_id, "landlord_id": user["_id"]})
     if not tenant:
         raise HTTPException(404, "Not found")
+    await db.tenants.update_one(
+        {"_id": tenant_id},
+        {"$set": {"archived": True, "status": "archived", "archived_at": utcnow_iso()}},
+    )
     if tenant.get("unit_id"):
         await db.units.update_one({"_id": tenant["unit_id"]}, {"$set": {"status": "vacant", "tenant_id": None}})
     if tenant.get("user_id"):
-        await db.users.delete_one({"_id": tenant["user_id"]})
-    await db.tenants.delete_one({"_id": tenant_id})
-    await log_activity(db, user, "tenant_delete", "tenant", tenant_id)
+        await db.users.update_one({"_id": tenant["user_id"]}, {"$set": {"suspended": True}})
+    await log_activity(db, user, "tenant_archive", "tenant", tenant_id)
+    return {"ok": True, "archived": True}
+
+
+class MoveOutChecklist(BaseModel):
+    rent_paid: bool = False
+    utilities_settled: bool = False
+    inspection_done: bool = False
+    keys_returned: bool = False
+    damage_assessed: bool = False
+    deposit_refunded: Optional[float] = 0
+    notes: Optional[str] = ""
+
+
+@router.post("/tenants/{tenant_id}/move-out")
+async def move_out_tenant(tenant_id: str, payload: MoveOutChecklist, user: dict = Depends(require_roles("landlord"))):
+    """Move-out workflow: archive tenancy, mark unit vacant, preserve all history."""
+    from server import db
+    tenant = await db.tenants.find_one({"_id": tenant_id, "landlord_id": user["_id"]})
+    if not tenant:
+        raise HTTPException(404, "Tenant not found")
+    await db.move_outs.insert_one({
+        "_id": new_id(),
+        "landlord_id": user["_id"],
+        "tenant_id": tenant_id,
+        "tenant_name": tenant.get("full_name"),
+        "property_id": tenant.get("property_id"),
+        "unit_id": tenant.get("unit_id"),
+        "moved_out_at": utcnow_iso(),
+        "checklist": payload.model_dump(),
+        "performed_by": user["_id"],
+    })
+    await db.tenants.update_one(
+        {"_id": tenant_id},
+        {"$set": {
+            "status": "vacated", "archived": True, "vacated_at": utcnow_iso(),
+            "move_out": payload.model_dump(),
+        }},
+    )
+    if tenant.get("unit_id"):
+        await db.units.update_one({"_id": tenant["unit_id"]}, {"$set": {"status": "vacant", "tenant_id": None}})
+    if tenant.get("user_id"):
+        await db.users.update_one({"_id": tenant["user_id"]}, {"$set": {"suspended": True}})
+    await log_activity(db, user, "tenant_move_out", "tenant", tenant_id, payload.model_dump())
     return {"ok": True}
+
+
+class AssignExistingIn(BaseModel):
+    tenant_id: str
+    lease_start: str
+    lease_expiry: str
+    amount_paid: float = 0
+    payment_frequency: str = "yearly"
+
+
+@router.post("/units/{unit_id}/assign-existing")
+async def assign_existing(unit_id: str, payload: AssignExistingIn, user: dict = Depends(require_roles("landlord"))):
+    """Re-use an existing (typically archived) tenant for a vacant unit."""
+    from server import db
+    unit = await db.units.find_one({"_id": unit_id, "landlord_id": user["_id"]})
+    if not unit:
+        raise HTTPException(404, "Unit not found")
+    if unit.get("status") == "occupied":
+        raise HTTPException(400, "Unit is already occupied")
+    tenant = await db.tenants.find_one({"_id": payload.tenant_id, "landlord_id": user["_id"]})
+    if not tenant:
+        raise HTTPException(404, "Tenant not found")
+    prop = await db.properties.find_one({"_id": unit["property_id"]})
+    await db.tenants.update_one(
+        {"_id": payload.tenant_id},
+        {"$set": {
+            "property_id": unit["property_id"],
+            "property_name": prop["name"] if prop else None,
+            "unit_id": unit_id,
+            "unit_name": unit.get("name"),
+            "lease_start": payload.lease_start,
+            "lease_expiry": payload.lease_expiry,
+            "amount_paid": payload.amount_paid,
+            "payment_frequency": payload.payment_frequency,
+            "archived": False, "status": "active",
+            "reassigned_at": utcnow_iso(),
+        }, "$unset": {"vacated_at": ""}},
+    )
+    await db.units.update_one({"_id": unit_id}, {"$set": {"status": "occupied", "tenant_id": payload.tenant_id}})
+    if tenant.get("user_id"):
+        await db.users.update_one({"_id": tenant["user_id"]}, {"$set": {"suspended": False}})
+    await log_activity(db, user, "tenant_reassign", "tenant", payload.tenant_id, {"unit_id": unit_id})
+    return {"ok": True}
+
+
+@router.get("/units/{unit_id}/history")
+async def unit_history(unit_id: str, user: dict = Depends(require_roles("landlord", "caretaker"))):
+    """Occupancy history for a unit — every tenant who has ever lived there."""
+    from server import db
+    landlord_id = get_landlord_scope(user)
+    docs = await db.tenants.find(
+        {"landlord_id": landlord_id, "unit_id": unit_id}
+    ).sort("lease_start", -1).to_list(500)
+    rows = []
+    for t in docs:
+        rows.append({
+            "id": t["_id"], "full_name": t.get("full_name"),
+            "lease_start": t.get("lease_start"), "lease_expiry": t.get("lease_expiry"),
+            "vacated_at": t.get("vacated_at"), "status": t.get("status"),
+            "archived": t.get("archived", False),
+            "amount_paid": t.get("amount_paid"),
+        })
+    return rows
 
 
 # ====== PAYMENTS ======
