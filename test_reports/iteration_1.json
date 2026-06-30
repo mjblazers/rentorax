@@ -1,0 +1,60 @@
+{
+  "summary": "End-to-end testing of RentoraX. Backend pytest suite (19 tests, all PASS) covers auth, super-admin landlord CRUD with suspend/activate/reset/cascade-delete, property creation with auto-generated units (Room 1..N, all vacant), tenant creation w/ portal user + initial payment + unit->occupied, tenant portal dashboard/maintenance, payment recording with RCP- receipts and lease renewal, maintenance TCK- numbering + PATCH status, accounting summary (totals/monthly/expense_by_category), reports/occupancy & /expiring (sorted), global search, caretaker RBAC (record_payment 403, delete property 403), and auth boundaries (tenant->admin 403, cross-landlord tenant delete 404). Frontend Playwright tested landing->/login, admin login redirect to /admin, theme toggle (dark class flips), create-landlord dialog showing generated-password, landlord login redirect to /landlord, and Add property dialog open. Logout flow blocked by Sonner toast overlay (pointer-events bug). Property creation form has Address field without data-testid causing required validation to block headless tests.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AppShell topbar / Sonner Toaster",
+        "issue": "After a success toast appears (e.g. after creating a landlord), the Sonner toast <li> overlay intercepts pointer events covering the top-right area, making profile-menu-btn / theme-toggle-btn / notifications unclickable until the toast auto-dismisses. Confirmed by Playwright error: 'data-sonner-toast ... subtree intercepts pointer events'. Set the Toaster container to pointer-events: none with toasts pointer-events: auto, or position it so it doesn't overlap the topbar.",
+        "selector": "[data-testid='profile-menu-btn'] / [data-sonner-toast]",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Landlord Properties 'Add property' dialog",
+        "issue": "Address Input (line 95 of /app/frontend/src/pages/landlord/Properties.jsx) is missing data-testid='prop-address-input'. Same likely applies to State input (line ~92), LGA, GPS, Description textarea, Photo URL, and unit-prefix select. Without testids, automated tests can't reliably populate the required Address field, blocking the property-creation Playwright flow. Add the missing data-testid attributes per the original spec.",
+        "selector": "Properties.jsx Address Input",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Platform Overview stat cards",
+        "issues": ["'Monthly Revenue' and 'Yearly Revenue' render as '\u20A60' with the strikethrough glyph artifact (Naira sign rendering looks like crossed-out 'N' overlapped with '0'). May be a font fallback issue for the \u20A6 character on the test environment — verify font loaded."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_rentorax_flow.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix Sonner Toaster overlay so it does not block clicks on topbar (profile-menu-btn, theme-toggle-btn, notifications). Easiest fix: ensure Toaster root has style 'pointer-events: none' and individual toast items 'pointer-events: auto'. Verify by triggering a toast then clicking the profile menu.",
+    "Add missing data-testid attributes on Add property dialog inputs in /app/frontend/src/pages/landlord/Properties.jsx: prop-address-input, prop-state-input, prop-lga-input, prop-gps-input, prop-desc-input, prop-photo-input, prop-prefix-select.",
+    "Audit other landlord dialogs (Tenants, Payments, Maintenance, Accounting, Caretakers) for missing data-testid coverage referenced in the test spec to enable automated testing."
+  ],
+  "critical_code_review_comments": [
+    "landlord_routes.py: _next_ticket_number uses count_documents which races under concurrency — two simultaneous tickets could get the same number. Use an atomic counters collection with findOneAndUpdate $inc instead.",
+    "Tenant portal_password requirement: create_tenant only creates a portal user when portal_enabled AND email AND portal_password are all set; UI must enforce these together or fail silently — confirm Tenants.jsx validates.",
+    "admin_routes.delete_landlord cascade does NOT delete db.income or db.notifications or db.announcements scoped to that landlord — orphaned data remains.",
+    "auth.set_auth_cookies uses samesite='none' + secure=True which is correct for cross-site, but local non-HTTPS dev will reject these cookies. Document this for local-dev contributors.",
+    "shared_routes.search: caretaker scope ignores assigned_properties filtering — a caretaker can search tenants/properties outside their assigned scope (only landlord_id is enforced).",
+    "db_utils.expiry_status returns 'warning' for days <= 90 but 'safe' for days > 90; combined with the >=60 'urgent' tier this matches the green/yellow/orange/red spec — but no dark-red state (frontend ExpiryBadge should reflect 'expired' as dark-red)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_rentorax_flow.py"
+  ],
+  "success_rate": {
+    "backend": "100% (19/19)",
+    "frontend": "~60% (5/8 core flows passed; logout & property dialog blocked by UI issues above)"
+  },
+  "test_credentials": "Super admin admin@rentorax.com / Admin@2026. Test landlords are created at runtime by the suite and cleaned up by the cascade-delete test (admin/landlords/{id}).",
+  "seed_data_creation": "None pre-seeded. The pytest suite creates and (mostly) deletes its own landlord+property+tenant chain. Two extra UI-only landlords (ui_ll_*, ui2_ll_*, ui3_ll_*, ui4_ll_*) and any caretaker2_* accounts may remain in db.users after this run.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend is solid (19/19). Frontend has two blocking issues: (1) Sonner toast overlay intercepting topbar clicks — try opening profile menu IMMEDIATELY after dialog success closes OR with await page.wait_for_timeout(5000) for toast to auto-dismiss. (2) The Add property dialog's Address field has no data-testid; fill it via label or CSS until main agent adds prop-address-input testid. Pytest must be run with REACT_APP_BACKEND_URL env var (env not auto-loaded by pytest-xdist), and use `-n 0` to override pytest.ini's `-n 2 --dist loadscope` because tests share state via a module-level STATE dict (would race under xdist).",
+  "rca of the issue": "Sonner Toast overlay blocking topbar: Sonner mounts a fixed-position <section> at top-right (default position). When a toast is active, the <section>/<li> sit on top of the topbar buttons (profile-menu-btn at the same top-right region). Without pointer-events:none on the wrapper, all clicks land on the toast list item instead of the underlying button. Standard Sonner setup requires either offsetting the toaster down from the topbar or disabling pointer events on the wrapper. Repro: log in as admin -> create a landlord (success toast fires) -> within ~3s click profile-menu-btn -> click is swallowed by .data-sonner-toast list item, dropdown never opens. Mitigation: in /app/frontend/src/index.js (or wherever <Toaster /> is mounted) pass `toastOptions={{ className: 'pointer-events-auto' }}` and set wrapper style pointer-events:none, OR position='bottom-right' so it doesn't overlap the AppShell topbar."
+}
