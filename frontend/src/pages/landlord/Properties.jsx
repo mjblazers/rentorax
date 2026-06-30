@@ -90,17 +90,17 @@ export default function Properties() {
                     <SelectContent>{PROPERTY_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                   </Select></div>
                 <div><Label>State *</Label>
-                  <Input required value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} /></div>
+                  <Input data-testid="prop-state-input" required value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} /></div>
                 <div className="sm:col-span-2"><Label>Address *</Label>
-                  <Input required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+                  <Input data-testid="prop-address-input" required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
                 <div><Label>Local Government</Label>
-                  <Input value={form.lga} onChange={(e) => setForm({ ...form, lga: e.target.value })} /></div>
+                  <Input data-testid="prop-lga-input" value={form.lga} onChange={(e) => setForm({ ...form, lga: e.target.value })} /></div>
                 <div><Label>GPS</Label>
-                  <Input placeholder="lat, lng" value={form.gps} onChange={(e) => setForm({ ...form, gps: e.target.value })} /></div>
+                  <Input data-testid="prop-gps-input" placeholder="lat, lng" value={form.gps} onChange={(e) => setForm({ ...form, gps: e.target.value })} /></div>
                 <div className="sm:col-span-2"><Label>Description</Label>
-                  <Textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+                  <Textarea data-testid="prop-desc-input" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
                 <div><Label>Photo URL (optional)</Label>
-                  <Input placeholder="https://…" value={form.photos[0] || ""} onChange={(e) => setForm({ ...form, photos: e.target.value ? [e.target.value] : [] })} /></div>
+                  <Input data-testid="prop-photo-input" placeholder="https://…" value={form.photos[0] || ""} onChange={(e) => setForm({ ...form, photos: e.target.value ? [e.target.value] : [] })} /></div>
                 <div><Label>Number of units</Label>
                   <Input data-testid="prop-num-units-input" type="number" min="0" value={form.num_units} onChange={(e) => setForm({ ...form, num_units: Number(e.target.value) })} /></div>
                 <div><Label>Unit prefix</Label>

@@ -154,6 +154,8 @@ async def delete_landlord(landlord_id: str, user: dict = ADMIN_DEP):
     await db.payments.delete_many({"landlord_id": landlord_id})
     await db.expenses.delete_many({"landlord_id": landlord_id})
     await db.maintenance_tickets.delete_many({"landlord_id": landlord_id})
+    await db.income.delete_many({"landlord_id": landlord_id})
+    await db.announcements.delete_many({"landlord_id": landlord_id})
     await log_activity(db, user, "landlord_delete", "landlord", landlord_id)
     return {"ok": True}
 
