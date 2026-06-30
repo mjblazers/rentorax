@@ -1,63 +1,60 @@
 # RentoraX — Product Requirements Document
 
-**App:** RentoraX
-**Stack:** FastAPI · MongoDB · React (Tailwind + shadcn/ui) · JWT auth
-**Audience:** Nigerian landlords (especially the diaspora) managing rental properties remotely.
+**App:** RentoraX · **Stack:** FastAPI + MongoDB + React (Tailwind/shadcn) · **Audience:** Nigerian (diaspora) landlords.
 
 ## Original Problem Statement
-Build a modern, enterprise-grade, production-ready Property Management & Rent Collection System
-for landlords in Nigeria — multi-tenant SaaS, 4 roles (Super Admin, Landlord, Caretaker, Tenant),
-property/unit/tenant/payment/maintenance/accounting modules, rent expiry color-coding,
-role-based access, reports, notifications, premium UI inspired by Buildium/AppFolio.
+Build RentoraX — a Property Management & Rent Collection SaaS for Nigerian landlords. 4 roles (Super Admin, Landlord, Caretaker, Tenant). Tenancy lifecycle, notices, move-out, accounting, maintenance, reports, notifications, premium UI. Phase 2 requires production-readiness: Cloudinary uploads, PDFs, emails, password reset, scheduler, advanced search/reports/activity, settings, security, no-delete-policy with archive + occupancy history.
 
 ## User Personas
-1. **Super Admin** — runs the RentoraX platform; manages landlord accounts and subscriptions.
-2. **Landlord (Diaspora)** — owns Nigerian properties; needs remote control over tenants, rent, maintenance and books.
-3. **Caretaker / Property Manager** — boots on the ground; limited permissions per property.
-4. **Tenant** — optional portal access; views lease, pays, raises maintenance.
+1. Super Admin · platform operator
+2. Landlord (diaspora) · remote owner
+3. Caretaker · boots-on-ground
+4. Tenant · optional portal user
 
-## Core Requirements (static)
-- 4 role dashboards with role-based RBAC.
-- Properties (7 types) with auto-generated units, renaming, occupancy badges.
-- Tenants with full record (NIN, guarantor, lease dates, payment frequency).
-- Payments with auto-numbered receipts (PDF/print).
-- Rent expiry tracker with 5-tier color (safe/warning/urgent/critical/expired).
-- Maintenance kanban (6 statuses, 13 categories, 4 priorities).
-- Accounting (income, expenses, P&L) with charts.
-- Caretaker creation with per-action permission matrix and per-property scope.
-- Tenant portal: dashboard, payment history, maintenance, announcements.
-- Activity logs and notifications.
-- Dark/Light mode.
-- Reports: occupancy, expiring leases (CSV export).
+## What's Implemented
 
-## What's been implemented (2026-06-30 · MVP v1)
-- ✅ FastAPI backend with JWT cookies, RBAC dependency, scoped queries per role.
-- ✅ Routers: auth, admin (landlord CRUD, stats, announcements, activity logs), landlord (props, units, tenants, payments, maintenance, expenses, income, accounting, caretakers, reports, announcements), tenant portal, shared (notifications, global search).
-- ✅ MongoDB indexes + super admin seed (admin@rentorax.com / Admin@2026).
-- ✅ Frontend: Tailwind theme (Organic & Earthy palette — forest greens + terracotta + warm sand), dark mode, Outfit + IBM Plex Sans fonts.
-- ✅ Landing page + login + protected routing per role.
-- ✅ Super Admin: dashboard with platform stats, landlords list/CRUD, announcements broadcast, activity logs.
-- ✅ Landlord: dashboard (cashflow chart + rent alerts), properties (auto-gen units), property detail (unit management), tenants (full form + portal toggle), tenant detail, payments (with printable receipt), maintenance kanban with drag-drop, accounting (income/expense + charts), caretakers (permissions + per-property scope), reports (occupancy, expiring) with CSV export, announcements.
-- ✅ Caretaker: limited dashboard + reused properties/tenants/maintenance pages (filtered by scope).
-- ✅ Tenant portal: dashboard, payment history with printable receipts, submit maintenance, announcements, profile + password change.
-- ✅ Global search across tenants/properties/payments/maintenance (API ready).
-- ✅ Activity audit trail across key actions.
+### v1.0 (2026-06-30)
+4 role dashboards · JWT cookies · properties with auto-generated units · tenants with full record · payments with receipts · rent expiry color codes · maintenance kanban · accounting with charts · caretaker RBAC matrix · reports (CSV) · activity logs · dark/light mode.
 
-## What's deferred (next iterations / P1)
-- 📌 Email / SMS / WhatsApp notifications (channels are wired in-app only)
-- 📌 Cloudinary or Emergent Object Storage for property/tenant/receipt uploads (currently URL strings)
-- 📌 Subscription billing flow for Super Admin (Stripe/Paystack)
-- 📌 PDF/Excel export (CSV only for MVP)
-- 📌 Maintenance assignment to technicians + photos upload
-- 📌 Multi-currency / multi-language
-- 📌 Tenant document uploads (ID, agreements)
-- 📌 Password reset flow (forgot-password email)
+### v2.0 — Production Readiness (2026-06-30)
+- **Tenancy Lifecycle**: tenant.status = active/expiring_soon/expired/notice_issued/move_out_scheduled/vacated/archived. Delete = archive (never destructive). Migrations backfill existing data.
+- **Move-Out Workflow**: POST /api/tenants/{id}/move-out with checklist (rent paid, utilities, inspection, keys, damage, deposit). Snapshots written to `move_outs` collection. Unit auto-vacates. Portal user suspended.
+- **Assign Existing Tenant**: POST /api/units/{unit_id}/assign-existing reactivates an archived tenant for a vacant unit. Full history preserved.
+- **Occupancy History**: GET /api/units/{unit_id}/history merges past tenancies (move_outs) + current tenant, sorted by lease_start desc. Surfaced in PropertyDetail timeline UI.
+- **Notice Management**: 8 types · 5 statuses. Tenants can view + acknowledge. Emails sent on issue. PDF download per notice with severity-based styling.
+- **Cloudinary Uploads**: drag-drop FileUpload component with progress, preview, file-type + size (8MB) validation. Used in property photos. Storage scoped per landlord under `rentorax/{landlord_id}/{folder}`.
+- **PDF Generation (WeasyPrint)**: receipts, tenant profile, notices, occupancy/expiring/income/expense/P&L/maintenance/outstanding reports. Branded headers (logo + business info from settings).
+- **Resend Email**: welcome (landlord/caretaker/tenant), payment receipt, maintenance update, notice issued, rent reminder, password reset. Responsive HTML.
+- **Password Reset**: forgot-password → secure token → email link → reset-password. 60-min TTL · one-time use · invalidates siblings.
+- **APScheduler Daily 8 AM Job**: walks all active tenants, updates status (active/expiring_soon/expired), pushes in-app notifications to landlord + tenant, emails reminders on configured days (defaults 30/14/7/3/1/0). Manual trigger via POST /api/admin/scheduler/run-now.
+- **Notification Center**: bell with unread badge, mark-all-read, delete, type colours, popover history.
+- **Settings Page**: landlord configures business name/address/phone/email/logo/currency/timezone/receipt prefix/receipt footer/reminder days/notification prefs. Backs all PDF + email templates.
+- **Security Hardening**: account lockout (6 fails → 15-min lock), security headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy), bcrypt, JWT cookies (httpOnly, secure, samesite=none).
+- **Dashboard Upgrades**: today's revenue, monthly income, outstanding count, open tickets, plus existing properties/units/occupancy/yearly-net widgets.
+- **Reports**: occupancy + expiring leases now have **PDF and CSV** export. Income / Expenses / P&L / Maintenance / Outstanding available as PDF endpoints.
+- **Activity Timeline**: extended with IP capture on login. Used by Super Admin's activity logs view.
 
-## Prioritized backlog
-- **P0:** Polish UI rough edges based on testing agent findings; verify all CRUD flows.
-- **P1:** Object storage for photos/documents, PDF receipts, Paystack subscriptions.
-- **P2:** WhatsApp/Email notifications, mobile app via React Native, multi-currency, advanced reporting.
+## Test Status
+- Backend regression (test_rentorax_flow.py): **19/19** PASS
+- Backend Phase-2 (test_phase2.py): **18/18** PASS (after history-merge fix)
+- Frontend Playwright: all Phase-2 testids verified
 
-## Credentials
+## Deferred to Phase 3
+- SMS / WhatsApp dispatch (hooks ready, channels not wired)
+- Refresh-token rotation
+- Multi-currency conversion at payment time
+- Multi-language UI (i18n)
+- Subscription billing (Paystack/Stripe) for landlords
+- Mobile (React Native) port
+
+## Credentials & Endpoints
 - Super Admin: `admin@rentorax.com` / `Admin@2026`
-- Landlord/Caretaker/Tenant: created through the admin/landlord UI; password is shown once on creation.
+- Manual scheduler trigger: `POST /api/admin/scheduler/run-now`
+- Forgot password: `POST /api/auth/forgot-password {email}`
+- Uploads: `POST /api/uploads/file` (multipart, `folder` form field)
+- PDFs: `GET /api/pdf/{receipt|tenant|notice|report}/{id|kind}`
+- Settings: `GET/PUT /api/settings`
+- Notices: `GET/POST/PATCH /api/notices`, tenant `GET /api/notices/tenant/list`, `POST /api/notices/{id}/acknowledge`
+- Move-out: `POST /api/tenants/{id}/move-out`
+- Assign existing: `POST /api/units/{unit_id}/assign-existing`
+- History: `GET /api/units/{unit_id}/history`

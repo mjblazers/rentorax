@@ -459,7 +459,13 @@ async def move_out_tenant(tenant_id: str, payload: MoveOutChecklist, user: dict 
         "tenant_id": tenant_id,
         "tenant_name": tenant.get("full_name"),
         "property_id": tenant.get("property_id"),
+        "property_name": tenant.get("property_name"),
         "unit_id": tenant.get("unit_id"),
+        "unit_name": tenant.get("unit_name"),
+        "lease_start": tenant.get("lease_start"),
+        "lease_expiry": tenant.get("lease_expiry"),
+        "amount_paid": tenant.get("amount_paid"),
+        "payment_frequency": tenant.get("payment_frequency"),
         "moved_out_at": utcnow_iso(),
         "checklist": payload.model_dump(),
         "performed_by": user["_id"],
@@ -524,21 +530,38 @@ async def assign_existing(unit_id: str, payload: AssignExistingIn, user: dict = 
 
 @router.get("/units/{unit_id}/history")
 async def unit_history(unit_id: str, user: dict = Depends(require_roles("landlord", "caretaker"))):
-    """Occupancy history for a unit — every tenant who has ever lived there."""
+    """Occupancy history for a unit — every tenancy ever in this unit (past + current)."""
     from server import db
     landlord_id = get_landlord_scope(user)
-    docs = await db.tenants.find(
-        {"landlord_id": landlord_id, "unit_id": unit_id}
-    ).sort("lease_start", -1).to_list(500)
+
+    # Past tenancies from move_outs snapshots
+    past = await db.move_outs.find({"landlord_id": landlord_id, "unit_id": unit_id}).to_list(500)
     rows = []
-    for t in docs:
+    for m in past:
         rows.append({
-            "id": t["_id"], "full_name": t.get("full_name"),
-            "lease_start": t.get("lease_start"), "lease_expiry": t.get("lease_expiry"),
-            "vacated_at": t.get("vacated_at"), "status": t.get("status"),
-            "archived": t.get("archived", False),
-            "amount_paid": t.get("amount_paid"),
+            "id": m.get("tenant_id"),
+            "full_name": m.get("tenant_name"),
+            "lease_start": m.get("lease_start"),
+            "lease_expiry": m.get("lease_expiry"),
+            "vacated_at": m.get("moved_out_at"),
+            "status": "vacated",
+            "archived": True,
+            "amount_paid": m.get("amount_paid"),
         })
+
+    # Current active tenant in this unit (not archived)
+    current = await db.tenants.find_one(
+        {"landlord_id": landlord_id, "unit_id": unit_id, "archived": {"$ne": True}}
+    )
+    if current:
+        rows.append({
+            "id": current["_id"], "full_name": current.get("full_name"),
+            "lease_start": current.get("lease_start"), "lease_expiry": current.get("lease_expiry"),
+            "vacated_at": current.get("vacated_at"), "status": current.get("status", "active"),
+            "archived": False, "amount_paid": current.get("amount_paid"),
+        })
+
+    rows.sort(key=lambda r: r.get("lease_start") or "", reverse=True)
     return rows
 
 

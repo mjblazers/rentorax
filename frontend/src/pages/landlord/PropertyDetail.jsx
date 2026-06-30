@@ -184,7 +184,7 @@ export default function PropertyDetail() {
             <div><Label>Archived tenant *</Label>
               <Select value={assignForm.tenant_id} onValueChange={(v) => setAssignForm({ ...assignForm, tenant_id: v })}>
                 <SelectTrigger data-testid="assign-tenant-select"><SelectValue placeholder={archived.length ? "Select a previous tenant" : "No archived tenants — create a new one from Tenants"} /></SelectTrigger>
-                <SelectContent>{archived.map((t) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}</SelectContent>
+                <SelectContent>{archived.map((t) => <SelectItem key={t.id} value={t.id} data-testid={`assign-tenant-option-${t.id}`}>{t.full_name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
